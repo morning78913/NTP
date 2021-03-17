@@ -975,286 +975,9 @@ void ADC_IRQHandler(void)		// 1m seceond per ADC interrupt
 	}
 	adc_cnt++;
 	cal_cnt++;
-	
-//	sim_mSec++;
-//	if(sim_mSec >= 4294900000)		sim_mSec = 0;
 }
 
-void EZCR(uint16_t len, uint16_t * zcr_len)
-{
-	uint16_t i, j;
-	/* Rising edge detection */
-	// Should be global, the signal processing is real-time
-	uint8_t negative_cur = 1;
-	uint8_t negative_prev = 1;
 
-
-	float timestamp_prev = 0.0;
-
-	/* Zero-Crossing Detection */
-//	timestamp_t zcr_timestamp[150] = { 0 };
-
-
-
-	/* BPF related */
-	// Init
-	// 727Hz, [45Hz,55Hz], butter
-	// float BPF_b[] ={0.04143578, 0., -0.04143578};
-	// float BPF_a[] = {1., -1.74262779, 0.91712843};
-
-	// 364Hz, [45Hz,55Hz], butter
-	//float BPF_b[] = { 0.07963244, 0., -0.7963244 };
-	//float BPF_a[] = { 1., -1.2011403, 0.84073512 };
-
-	// 333Hz, [45Hz,55Hz], butter
-//	float BPF_b[] = { 0.0864434747516911, 0.0, -0.0864434747516911 };
-//	float BPF_a[] = { 1, -1.0773459643074454, 0.8271130504966180 };
-
-//	float BPF_z[2] = { 0.0 }; /* size = max(len(a),len(b))*/
-//	float y_prev = 0.0; // current filtered results, the latest filtered results
-//	uint16_t x_prev = 0; // the input data, the previous input data
-//	//float ybpf[WORKING_BUF_SIZE] = { 0.0 }; /*Store the filtered data*/
-//	float ybpf_prev = 0.0;
-
-	/* PLL related*/
-//	timestamp_t prev_u2_timestamp = 0;
-//	timestamp_t prev_zcr_timestamp = 0;
-//	float phi = 0.0, last_phi = 0.0, phi_prev = 0.0;
-//	float phi_hat = 0.0, phi_hat_prev = 0.0, phi_hat_prev2 = 0.0;
-//	float delta_phi;
-//	float zcr_interval_current;
-//	uint16_t k, cnt2 = 0; // 512 maximum for uint8_t
-//	uint8_t cnt_compensateClock; // 512 maximum
-//	float compensateClockCycle = 0.02;
-//	float PLL_v0 = 0.0, PLL_v1 = 0.0, PLL_v2 = 0.0;
-//	//float PLL_a0;
-//	float PLL_a1, PLL_a2;
-//	float PLL_b0, PLL_b1, PLL_b2;
-//	//struct PLL_PARAMETER * pll_para = (struct PLL_PARAMETER *)malloc(sizeof(struct PLL_PARAMETER));
-//	struct PLL_PARAMETER pll_para[1];
-
-	// BPF processing
-	//currentTicksH = call LocalTime.get();
-	//printfz1("BPF %lu\n", currentTicksH);
-	/* band-pass filter IIR
-	* input v: original sample
-	* output ybpf: filtered sample
-	*/
-//	for (i = 0; i < len; i++) {
-//		ybpf[i] = BPF_b[0] * sep_signal[i] + BPF_z[0];
-//		// calcualte the recursive equations
-//		BPF_z[1] = BPF_b[2] * x_prev - BPF_a[2] * y_prev; // z[1, m - 1]
-//		BPF_z[0] = BPF_z[1] - BPF_a[1] * ybpf[i];  // z[0, m]
-//		x_prev = sep_signal[i];
-//		y_prev = ybpf[i];
-//	}
-	
-	///////// Overhead monitorint (Z1) ////////
-	// currentTicksH = call LocalTime.get();
-	// printfz1("ZCR %lu\n", currentTicksH);
-	//////////////////////////////////////////
-
-	// uint8_t deadzone = SAMPLING_RATE * 0.0075
-	//         fs = 333Hz, deadzone = 2
-	j = 0;
-	for (i = 0; i < len; i++) 
-	{
-		//printf("ybpf[%d] = %f\n", i, ybpf[i]);
-		if (ybpf[i] > 0.0) 
-		{
-			negative_cur = 0;
-			if (negative_prev == 1) {
-				// linear interpolation
-				//printf("%d\n",i);
-				zcr[j] = timestamp_prev + ybpf_prev * ((sep_timestamp[i] - sep_timestamp[0]) * 1.0 - timestamp_prev) / (ybpf_prev - ybpf[i]);//zcr_timestamp[j] = timestamp_prev + ybpf_prev * ((sep_timestamp[i] - sep_timestamp[0]) * 1.0 - timestamp_prev) / (ybpf_prev - ybpf[i]);
-				//printf("[%u]\tBPF %luticks\t%luticks\n", j, zcr_timestamp[j], (zcr_timestamp[j] - prev_zcr_timestamp));
-//				prev_zcr_timestamp = zcr_timestamp[j]; // should be comment if the above printf is disabled
-				i = i + 2; // use deadzone to avoid jitter
-				j++;
-			}
-		}
-		else 
-		{
-			negative_cur = 1;
-			timestamp_prev = sep_timestamp[i] - sep_timestamp[0];
-			ybpf_prev = ybpf[i];
-		}
-		negative_prev = negative_cur;
-	}
-
-//	if (ENABLE_PLL) {
-//		// PLL parameter init
-//		// This part could be replaced once all the paramters are finalized
-//		pll_para->wn = 0.03;
-//		pll_para->zeta = 0.9;
-//		pll_para->K = 1000.0;
-//		pll_para->v0 = 0.0;
-//		pll_para->v1 = 0.0;
-//		pll_para->v2 = 0.0;
-
-//		// PLL processing
-//		//currentTicksH = call LocalTime.get();
-//		//printfz1("PLL %lu\n", currentTicksH);
-//		/* if ZCR found in this batch */
-//        /* If more than 1 ZCRs are found in this batch*/
-//		if (j > 1) {
-//			/* assign the timestamp for each zero crossing point */
-//			// note on the definition of 20ms
-//			// create the 20ms ZCR
-
-//			float tau1 = 0.0, tau2 = 0.0;
-
-//			// PLL parameter init
-//			// This part could be replaced once all the paramters are finalized
-//			// compute the coefficients
-//			tau1 = pll_para->K / pll_para->wn / pll_para->wn;
-//			tau2 = 2 * pll_para->zeta / pll_para->wn;
-
-//			PLL_b0 = 4 * pll_para->K / tau1*(1 + tau2 / 2);
-//			PLL_b1 = 8 * pll_para->K / tau1;
-//			PLL_b2 = 4 * pll_para->K / tau1 * (1 - tau2 / 2);
-//			//PLL_a0 = 1.0;
-//			PLL_a1 = -2.0;
-//			PLL_a2 = 1.0;
-
-//			// PLL processing
-//			for (i = 1; i < j; i++) {
-//				phi = ((zcr_timestamp[i] - zcr_timestamp[1]) * 1.0 / PRECISION_TAG); // potentional last digit precision loss
-
-
-//				last_phi = phi; // push
-
-//				delta_phi = phi - phi_hat;
-//				zcr_interval_current = phi - phi_prev;
-
-//				/////////////////////ZCR compensation//////////////////////////////////////
-//				if (zcr_interval_current > 0.025) {
-//					cnt_compensateClock = (phi - phi_prev) / 0.02; // use integer part only
-//					phi = phi_prev;
-//					k = 0;
-//					while (k < cnt_compensateClock) {
-//						phi = phi + compensateClockCycle;
-//						delta_phi = phi - phi_hat;
-
-//						//printf("%u\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t", cnt2, phi, (phi - phi_prev), phi_hat, (phi_hat - phi_hat_prev2), ((phi_hat - phi_hat_prev2) - (phi - phi_prev)), delta_phi);
-//						zcr[cnt2] = phi_hat * PRECISION_TAG + zcr_timestamp[1];
-
-//						//printf("PLL %luus\t%luus\n", zcr[cnt2], (zcr[cnt2] - prev_u2_timestamp));
-////                        prev_u2_timestamp = zcr[cnt2]; // should be comment if corresponding printf is/are disabled
-//                        //fprintf(fpOutput, "%u\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", cnt2, phi, (phi - phi_prev), phi_hat, (phi_hat - phi_hat_prev2), ((phi_hat - phi_hat_prev2) - (phi - phi_prev)), delta_phi);
-
-//						cnt2++;
-
-//						//////// PLL computing
-//						// advance buffer
-//						PLL_v2 = PLL_v1;  // shift center register to upper register
-//						PLL_v1 = PLL_v0;  // shift lower register to center register
-//										  // compute new lower register
-//						PLL_v0 = delta_phi - PLL_v1*PLL_a1 - PLL_v2*PLL_a2;
-//						// compute new output
-//						phi_hat = PLL_v0*PLL_b0 + PLL_v1*PLL_b1 + PLL_v2*PLL_b2;
-
-//						phi_prev = phi;
-////						phi_hat_prev2 = phi_hat_prev; // should be comment if corresponding printf is/are disabled
-//						phi_hat_prev = phi_hat;
-//						///////////////////////
-
-//						k++;
-//					}
-//				}
-//				////////////////// -END- ZCR compensation  ////////////////////////////
-
-
-//				phi = last_phi; // pop
-
-//                //printf("%u\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\t", cnt2, phi, (phi - phi_prev), phi_hat, (phi_hat - phi_hat_prev2), ((phi_hat - phi_hat_prev2) - (phi - phi_prev)), delta_phi);
-
-//				//zcr[cnt2] = (phi_hat * PRECISION_TAG + zcr_timestamp[1]) * 1000 / PRECISION_TAG;
-//				//printfz1("PLL %lums\t%lums\n", zcr[cnt2], (zcr[cnt2] - prev_u2_timestamp));
-
-//				// output ticks
-//				zcr[cnt2] = phi_hat * PRECISION_TAG + zcr_timestamp[1];
-//				//printf("t[0] = %ld\tsum=%ld\n",t[0],(phi_hat*PRECISION_TAG + zcr_timestamp[1] + t[0]));
-////				printf("PLL %ldticks\t%ldticks\n", zcr[cnt2], (zcr[cnt2] - prev_u2_timestamp));
-////				prev_u2_timestamp = zcr[cnt2]; // should be comment if corresponding printf is/are disabled
-//				cnt2 = cnt2 + 1;
-
-//				//////// PLL computing
-//				// advance buffer
-//				PLL_v2 = PLL_v1;  // shift center register to upper register
-//				PLL_v1 = PLL_v0;  // shift lower register to center register
-//								  // compute new lower register
-//				PLL_v0 = delta_phi - PLL_v1*PLL_a1 - PLL_v2*PLL_a2;
-//				// compute new output
-//				phi_hat = PLL_v0*PLL_b0 + PLL_v1*PLL_b1 + PLL_v2*PLL_b2;
-
-//				phi_prev = phi;
-////				phi_hat_prev2 = phi_hat_prev; // should be comment if corresponding printf is/are disabled
-//				phi_hat_prev = phi_hat;
-//				///////////////////////
-//			}
-//			//////// -End- PLL processing //////////////////////
-//		}
-//		///////////// -END- PLL and missing ZCR compensation //////////////////
-
-//		*zcr_len = cnt2;
-//	}
-//	else {
-//		for (i = 0; i < j; i++) {
-//			zcr[i] = zcr_timestamp[i];
-//		}
-//		*zcr_len = j;
-//	}
-//	
-	// Print ADC result to UART
-//	for(int i=0; i<len; i++)	
-//	{ 
-////		if(i < 150)		printf("%f\t%f\t%f\n", sep_signal[i], ybpf[i], zcr_timestamp[i]);
-////		else 			printf("%f\t%f\n", sep_signal[i], ybpf[i]);
-//		//printf("%f\t%f\n", sep_signal[i], ybpf[i]);
-//		//printf("%f\t\n", (float)sep_signal[i]);
-//		printf("%f\t\n", (float)ybpf[i]);
-//		//printf("%f\t\n", (float)zcr_timestamp[i]);
-//		//printf("%f\t\n", (float)zcr[i]);
-//	}	
-	
-//	NRF_PPI->CHEN = (PPI_CHEN_CH0_Enabled << PPI_CHEN_CH0_Pos);
-}
-
-void signal_processing_algorithms()
-{
-	int len = BUF_SIZE;//int len;
-//	int i;
-	uint16_t zcr_len = 0;	
-	
-	EZCR(len, &zcr_len);
-
-	phi2 = INF;
-	phi3 = INF;
-//	for (i = 1; i < zcr_len; i++)
-//	{
-////		printf("t2=%lu, t3=%lu\t", t2, t3);
-////		printf("zcr[i-1] + t[0]:%lu,\tzcr[i] + t[0]:%lu\r\n", zcr[i - 1] + sep_timestamp[0], zcr[i] + sep_timestamp[0]);
-//		if (phi2 == INF)
-//		{
-//			if ((t2 >= zcr[i - 1] + sep_timestamp[0]) && (t2 < zcr[i] + sep_timestamp[0]))
-//			{
-//				phi2 = t2 - zcr[i - 1] - sep_timestamp[0];
-////				printf("phi2:%lu\r\n", phi2);
-//			}
-//		}
-//		if (phi3 == INF)
-//		{
-//			if ((t3 >= zcr[i - 1] + sep_timestamp[0]) && (t3 < zcr[i] + sep_timestamp[0]))
-//			{
-//				phi3 = t3 - zcr[i - 1] - sep_timestamp[0];
-////				printf("phi3:%lu\r\n", phi3);
-//			}
-//		}
-//	}
-//	printf("phi2:%lu ,phi3:%lu\r\n", phi2, phi3);
-//	printf("--------------------");
-}
 
 /**@brief Application main function.
  */
@@ -1277,7 +1000,7 @@ int main(void)
     advertising_init();
     conn_params_init();
 
-    printf("\r\nSlave Start!!!\r\n");
+    printf("\r\nNTP Start!!!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
@@ -1290,7 +1013,7 @@ int main(void)
 		{
 			sep_start = false;
 			//bsp_board_led_invert(BSP_BOARD_LED_1);
-			signal_processing_algorithms();
+
 			
 //			err_code = ble_nus_string_send(&m_nus, HeartRate_RAW, INDEX);
 //			if (err_code != NRF_ERROR_INVALID_STATE)
@@ -1360,7 +1083,7 @@ int main(void)
 			
 			//nrf_delay_ms(60);	// simulate a random packet transmission delay that is uniformly distributed within [0,100ms]
 			
-			signal_processing_algorithms();
+
 			
 			Receive_Reply2_t2 = true;
 		}
