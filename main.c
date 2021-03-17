@@ -31,7 +31,7 @@
 #define CENTRAL_LINK_COUNT              0                                           /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 
-#define DEVICE_NAME                     "Slave"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "NTP"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
@@ -58,132 +58,14 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
-//static uint8_t							INDEX = 20;
-//uint8_t  								HeartRate_RAW[BLE_NUS_MAX_DATA_LEN] = {	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-//																				1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
-uint8_t									TimeSocket[10] = {0};
-uint8_t 	adc_cnt = 0;	
-uint16_t	cal_cnt = 0;			
 
-uint16_t	test = 0;
 
-//============================================================================================= Time Stamp Start	
 #define TimeStamp
 
 #ifdef	TimeStamp
-
-//#include "touchsync.h"
-
-#define BUF_SIZE 500//2048 // size of the circular buffer to store SEP samples
-#define WORKING_BUF_SIZE 500 // size of the working buffer to store a selected SEP signal segment
-typedef uint16_t timestamp_t;//typedef unsigned long timestamp_t; // timestamp data type
-typedef uint16_t sigval_t;//int sigval_t; // SEP signal value data type
-typedef signed long offset_t; // clock offset data type
-
-#define PI 3.1415926535
-#define SIGNAL_T 20000
-#define INF 65535
-#define PRECISION_TAG 1000000 // for Z1 it is 32768
-#define ENABLE_PLL 0//1// // turn on/off PLL. 1: on; 0: off
-
-// some global variables for solving ambiguity equation
-#define MAX_IJ 20  // define the maximum i+j
-#define MAX_EPSILON_ERROR 3000
-#define IS_PRIOR_KNOWLEDGE_USED 1 // whether use the assymetry knowledge of transmission
-
-
-timestamp_t sep_timestamp[BUF_SIZE]; // circular buffer to store timestamps of SEP samples
-sigval_t sep_signal[BUF_SIZE]; // circular buffer to store SEP sample values
-
-
-#ifdef TimeStamp
-timestamp_t zcr[100];//timestamp_t zcr[WORKING_BUF_SIZE];
-//	timestamp_t zcr_timestamp[100] = { 0 };
-
-float ybpf[WORKING_BUF_SIZE] = { 0.0 }; /*Store the filtered data*/
-offset_t delta_q,delta_solution[MAX_IJ], delta_candidate[MAX_IJ];
-timestamp_t tau_solution[MAX_IJ], tau_candidate[MAX_IJ], theta_q, theta_p, tau_q, rtt;
-int solve_count = 0; // record the number of solutions
-int candidate_count = 0; // record the number of solutions
-int session_count = 0; // record the number of sessions
-int ijscale;
-
-//timestamp_t t1, t2, t3, t4; // synchronization packet timestamps (see paper)
-timestamp_t phi1, phi2, phi3, phi4; // elapsed time from the last impulse (see paper)
-
 #endif
-int buf_index = 0; // the circular bufffer position to be written
 
-//////////////PLL related
-struct STATE {
-	double tau1, tau2;
-	double w0;
-	int UB, K0;
-	double t;
-	double uc;
-	double phi2;
-	int Q;
-	int u1;
-	double uf;
-};
-
-struct PLL_PARAMETER {
-	double wn;
-	double zeta;
-	double K;
-	double v0;
-	double v1;
-	double v2;
-};
-/////////////////////////
-
-
-int stop_sampling = 0; // used by the main thread to notify the sampling thread to stop
-//timestamp_t t0;  // store starting timestamp
-bool sep_start,time_start,pwm_start = false;
-
-	float BPF_b[] = { 0.0864434747516911, 0.0, -0.0864434747516911 };
-	float BPF_a[] = { 1, -0.8773459643074454, 1.2271130504966180 };//{ 1, -1.0773459643074454, 0.8271130504966180 };//
-
-	float BPF_z[2] = { 0.0 }; /* size = max(len(a),len(b))*/
-	float y_prev = 0.0; // current filtered results, the latest filtered results
-	uint16_t x_prev = 0; // the input data, the previous input data
-	float ybpf_prev = 0.0;
-
-#define 	LFCLK			(30.517578125*1e-6)
-//uint32_t 	us;
-uint32_t 	pre_us;
-uint32_t 	diff_us;
-double		count_us;
-int32_t		total_us;
-uint32_t	sim_mSec = 0;
-	
-bool 		ADC_START = false;
-bool		NTP_START = false;
-bool		FOLLOW_UP = false;
-bool		FOLLOW_UP_START = false;
-bool		BUTTON_1_PRESS = false;
-	
-struct	TIME
-{
-	uint16_t	year;
-	uint8_t 	month;
-	uint8_t		day;
-	uint8_t		hour;
-	uint8_t 	minute;
-	uint8_t 	second;
-	uint32_t	us;
-}t0,t1,t2,t3,t4,temp;
-struct TIME sys_time = {2020, 8, 8, 3, 14, 44}; 
-bool Receive_Reply1	= false;
-bool Receive_Reply2_t2 = false;
-bool Receive_Reply2_t3 = false;
-
-uint32_t	base_time = 0;
-
-#endif
-//============================================================================================= Time Stamp End							
 							
 
 
@@ -233,48 +115,6 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void write_data(struct TIME t, char message[])
-{
-	uint32_t err_code;
-	
-	if(message[0] == '\0')
-	{
-		TimeSocket[0]	= t.year >> 8;
-		TimeSocket[1]	= t.year & 0x00FF;
-		TimeSocket[2]	= t.month;
-		TimeSocket[3]	= t.day;
-		TimeSocket[4]	= t.hour;
-		TimeSocket[5]	= t.minute;
-		TimeSocket[6]	= t.second;
-		TimeSocket[7]	= (uint32_t)t.us >> 16;
-		TimeSocket[8]	= ((uint32_t)t.us & 0x00FF00) >> 8;
-		TimeSocket[9]	= (uint32_t)t.us & 0x0000FF;
-		
-		err_code = ble_nus_string_send(&m_nus, TimeSocket, 10);
-		if (err_code != NRF_ERROR_INVALID_STATE)		
-		{
-			APP_ERROR_CHECK(err_code);
-		}
-		
-		printf("[Send]%04d/%02d/%02d %02d:%02d:%02d %10d\r\n", t.year, t.month, t.day, t.hour, t.minute, t.second, t.us);
-	}
-	else
-	{
-		uint8_t WriteSocket[8] = {0};
-
-		strcpy(WriteSocket, message);
-		
-		err_code = ble_nus_string_send(&m_nus, WriteSocket, 8);
-		if (err_code != NRF_ERROR_INVALID_STATE)		
-		{
-			APP_ERROR_CHECK(err_code);
-		}
-		printf("[Send]");
-		for(int i = 0; i < WriteSocket[i] != '\0'; i++)		printf("%c", WriteSocket[i]);
-		printf("\r\n");
-	}
-}
-
 /**@brief Function for handling the data from the Nordic UART Service.
  *
  * @details This function will process the data received from the Nordic UART BLE Service and send
@@ -287,91 +127,6 @@ void write_data(struct TIME t, char message[])
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-	if(length >= 10)
-	{
-		if(Receive_Reply2_t2)
-		{
-			Receive_Reply2_t2 = false;
-			
-			printf("\r\n[Master][t2]");
-			printf("%04d/%02d/%02d %02d:%02d:%02d %10d\r\n",  		p_data[0] << 8	|	
-																	p_data[1],
-																	p_data[2],
-																	p_data[3],
-																	p_data[4],
-																	p_data[5],
-																	p_data[6],
-																	p_data[7] << 16	|
-																	p_data[8] << 8	|
-																	p_data[9]			);
-			
-			Receive_Reply2_t3 = true;
-		}
-		else if(Receive_Reply2_t3)
-		{
-			Receive_Reply2_t3 = false;
-			
-			printf("\r\n[Master][t3]");
-			printf("%04d/%02d/%02d %02d:%02d:%02d %10d\r\n",  		p_data[0] << 8	|	
-																	p_data[1],
-																	p_data[2],
-																	p_data[3],
-																	p_data[4],
-																	p_data[5],
-																	p_data[6],
-																	p_data[7] << 16	|
-																	p_data[8] << 8	|
-																	p_data[9]			);
-			//nrf_delay_ms(1000);	// wait one second before the next synchronization session
-
-		}
-		else
-		{
-			printf("\r\n[Master]");
-			printf("%04d/%02d/%02d %02d:%02d:%02d %10d\r\n",  		p_data[0] << 8	|	
-																	p_data[1],
-																	p_data[2],
-																	p_data[3],
-																	p_data[4],
-																	p_data[5],
-																	p_data[6],
-																	p_data[7] << 16	|
-																	p_data[8] << 8	|
-																	p_data[9]			);
-		}
-
-	}
-	else
-	{
-		printf("[Master]");
-		for(int i = 0; i < length; i++)		printf("%c", p_data[i]);
-		printf("\r\n");
-
-		if( p_data[0] == 'r' &&
-			p_data[1] == 'e' &&		
-			p_data[2] == 'p' &&
-			p_data[3] == 'l' &&
-			p_data[4] == 'y' &&
-			p_data[5] == '1' 	)	
-		{	
-			Receive_Reply1 = true;
-		}
-	
-		if( p_data[0] == 'D' &&
-			p_data[1] == 'e' &&		
-			p_data[2] == 'l' &&
-			p_data[3] == 'a' &&
-			p_data[4] == 'y' &&
-			p_data[5] == 'R' &&
-			p_data[6] == 'e' &&
-			p_data[7] == 'q' 	)	
-		{	
-			write_data(sys_time, "Delay");
-			time_start = true;
-			pwm_start = true;
-		}	
-		
-	}
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -815,7 +570,6 @@ void timer_init(void)
 {
 	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 	
-//****************************************************************************************************** Start
    // Start 16 MHz crystal oscillator.
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
@@ -844,137 +598,8 @@ void ADC_IRQHandler(void)		// 1m seceond per ADC interrupt
 	/* Clear dataready event */
     NRF_ADC->EVENTS_END = 0;	
 	
-//	bsp_board_led_invert(BSP_BOARD_LED_2);
-	
-	
-	if(adc_cnt == 3 && ADC_START)
-	{
-		adc_cnt = 0;
+	int inverSignal = 1024 - NRF_ADC->RESULT;	// Inverting the signal value
 
-		//Reverse Signal
-		int inverSignal = 1024 - NRF_ADC->RESULT;	// Inverting the signal value
-		
-
-#ifdef TimeStamp	
-		sep_signal[buf_index] = (sigval_t)inverSignal;//(sigval_t)RAW_HR[simcnt];//
-		sep_timestamp[buf_index] = (app_timer_cnt_get()*LFCLK)*1000;//sim_mSec;		// Converter to mini second
-		
-			// IIR frequency transfer
-			ybpf[buf_index] = BPF_b[0] * sep_signal[buf_index] + BPF_z[0];
-			// calcualte the recursive equations: y[n] = b0*x[0] + ((b2*x[n-1] - a2*y[n-1]) + (b1*x[1] - a1*y[n]))
-			BPF_z[1] = BPF_b[2] * x_prev - BPF_a[2] * y_prev; // z[1, m - 1]
-			BPF_z[0] = BPF_z[1] - BPF_a[1] * ybpf[buf_index];  // z[0, m]
-			x_prev = sep_signal[buf_index];
-			y_prev = ybpf[buf_index];
-#endif	
-		
-		buf_index++;
-
-		if(buf_index == BUF_SIZE)	
-		{
-			buf_index = 0;
-			
-			BPF_z[0] = 0;
-			BPF_z[1] = 0;
-			x_prev = 0;
-			y_prev = 0;
-			
-			sep_start = true;
-			ADC_START = false;
-		}
-	}
-	
-	if(cal_cnt == 1000)		// i tick is 1ms
-	{
-		cal_cnt = 0;
-		time_start = true;
-		
-		pre_us = sys_time.us;
-		sys_time.us = app_timer_cnt_get();
-		
-		// To prevent RTC1 overflow(24-bits)
-		if(sys_time.us < pre_us)		diff_us = sys_time.us + (16777215 - pre_us);
-		else							diff_us = sys_time.us - pre_us;
-		
-		// To calculate the subtraction of milis
-		if(diff_us < 32768)				total_us += (32768 - diff_us);
-		else 							total_us += (diff_us - 32768);
-		
-		//count_milis = total_milis * LFCLK;//count_milis = diff_milis * LFCLK;
-		
-		if(BUTTON_1_PRESS)		
-		{
-			BUTTON_1_PRESS = false;
-			NTP_START = true;
-		}
-		if(FOLLOW_UP)
-		{
-			FOLLOW_UP = false;
-			FOLLOW_UP_START = true;
-		}
-		if(pwm_start)
-		{
-			pwm_start = false;
-			
-			for(char i = 0; i < 3; i++)
-			{
-				bsp_board_led_invert(BSP_BOARD_LED_1);
-				nrf_delay_us(5);
-				bsp_board_led_invert(BSP_BOARD_LED_1);
-				nrf_delay_us(50);
-			}
-			nrf_delay_us(150);
-			for(char i = 0; i < 2; i++)
-			{
-				bsp_board_led_invert(BSP_BOARD_LED_1);
-				nrf_delay_us(5);
-				bsp_board_led_invert(BSP_BOARD_LED_1);
-				nrf_delay_us(50);
-			}
-			nrf_delay_us(150);
-			
-			bsp_board_led_invert(BSP_BOARD_LED_1);
-			nrf_delay_us(5);
-			bsp_board_led_invert(BSP_BOARD_LED_1);
-		}
-		
-		base_time = app_timer_cnt_get(); 
-
-		sys_time.second++;
-		if(sys_time.second == 60)
-		{
-			sys_time.second = 0;
-			
-			sys_time.minute++;
-			if(sys_time.minute == 60)
-			{
-				sys_time.minute = 0;
-				
-				sys_time.hour++;
-				if(sys_time.hour == 24)
-				{
-					sys_time.hour = 0;
-					
-					sys_time.day++;
-					if(sys_time.day == 30)
-					{
-						sys_time.day = 0;
-						
-						sys_time.month++;
-						
-						if(sys_time.month == 12)
-						{
-							sys_time.month = 0;
-							
-							sys_time.year++;
-						}
-					}
-				}
-			}
-		}
-	}
-	adc_cnt++;
-	cal_cnt++;
 }
 
 
@@ -1008,132 +633,6 @@ int main(void)
     for (;;)
     {
         power_manage();
-		
-		if(sep_start)
-		{
-			sep_start = false;
-			//bsp_board_led_invert(BSP_BOARD_LED_1);
-
-			
-//			err_code = ble_nus_string_send(&m_nus, HeartRate_RAW, INDEX);
-//			if (err_code != NRF_ERROR_INVALID_STATE)
-//			{
-//				APP_ERROR_CHECK(err_code);
-//			}
-			
-//			printf("\r\n%d/%d/%d %d:%d:%d.%lu\r\n", year, month, day, hour, minute, second, app_timer_cnt_get());
-		}		
-		
-		if(time_start)
-		{
-			time_start = false;
-			
-			TimeSocket[0]	= sys_time.year >> 8;
-			TimeSocket[1]	= sys_time.year & 0x00FF;
-			TimeSocket[2]	= sys_time.month;
-			TimeSocket[3]	= sys_time.day;
-			TimeSocket[4]	= sys_time.hour;
-			TimeSocket[5]	= sys_time.minute;
-			TimeSocket[6]	= sys_time.second;
-			TimeSocket[7]	= (uint32_t)total_us >> 16;//(uint32_t)milis >> 16;
-			TimeSocket[8]	= ((uint32_t)total_us & 0x00FF00) >> 8;//((uint32_t)milis & 0x00FF00) >> 8;
-			TimeSocket[9]	= (uint32_t)total_us & 0x0000FF;//(uint32_t)milis & 0x0000FF;
-
-			printf("%04d/%02d/%02d %02d:%02d:%02d\r\n", sys_time.year, sys_time.month, sys_time.day, sys_time.hour, sys_time.minute, sys_time.second);//printf("%04d/%02d/%02d %02d:%02d:%02d %10d\r\n", sys_time.year, sys_time.month, sys_time.day, sys_time.hour, sys_time.minute, sys_time.second, sys_time.us);//printf("%04d/%02d/%02d %02d:%02d:%02d %10d %10f %10d\r\n", sys_time.year, sys_time.month, sys_time.day, sys_time.hour, sys_time.minute, sys_time.second, total_us, total_us*LFCLK, us);
-		}
-			
-		// Let sample start!
-		if(!nrf_gpio_pin_read(BUTTON_4) && !ADC_START)
-		{
-			ADC_START = true;
-			
-			//nrf_delay_ms(60);		// Wait until the adc buffer has been filled with some data	
-			
-			t0		= sys_time;
-			t0.us	= app_timer_cnt_get();
-			printf("\r\n[t0] %04d/%02d/%02d %02d:%02d:%02d %10d\r\n", t0.year, t0.month, t0.day, t0.hour, t0.minute, t0.second, t0.us);
-			
-//			t1		= sys_time;
-			t1.us	= app_timer_cnt_get();
-			//nrf_delay_ms(100);	// simulate a random packet transmission delay that is uniformly distributed within [0,100ms]
-			write_data(sys_time, "request");
-			t1.year		= sys_time.year;
-			t1.month	= sys_time.month;
-			t1.day		= sys_time.day;
-			t1.hour		= sys_time.hour;
-			t1.minute	= sys_time.minute;
-			t1.second	= sys_time.second;
-			printf("[t1] %04d/%02d/%02d %02d:%02d:%02d %10d\r\n", t1.year, t1.month, t1.day, t1.hour, t1.minute, t1.second, t1.us);
-		}
-		while(Receive_Reply1)
-		{			
-			Receive_Reply1 = false;
-
-//			t4		= sys_time;
-			//nrf_delay_ms(100);	// simulate a random packet transmission delay that is uniformly distributed within [0,100ms]
-			t4.us	= app_timer_cnt_get();
-			t4.year		= sys_time.year;
-			t4.month	= sys_time.month;
-			t4.day		= sys_time.day;
-			t4.hour		= sys_time.hour;
-			t4.minute	= sys_time.minute;
-			t4.second	= sys_time.second;
-			printf("[t4] %04d/%02d/%02d %02d:%02d:%02d %10d\r\n\r\n", t4.year, t4.month, t4.day, t4.hour, t4.minute, t4.second, t4.us);	
-			printf("========== t = %fms(%d) ==========\r\n", (t4.us-t1.us)*1000*LFCLK, t4.us-t1.us);
-			
-			//nrf_delay_ms(60);	// simulate a random packet transmission delay that is uniformly distributed within [0,100ms]
-			
-
-			
-			Receive_Reply2_t2 = true;
-		}
-		
-		if(!nrf_gpio_pin_read(BUTTON_3) && !ADC_START)
-		{
-			ADC_START = true;
-			
-			write_data(sys_time, "");
-		}  
-
-		if(!nrf_gpio_pin_read(BUTTON_2) && !ADC_START)
-		{
-			ADC_START = true;
-			
-			write_data(sys_time, "error");
-		}  
-		
-		// NTP Protocol source
-		if(!nrf_gpio_pin_read(BUTTON_1))		
-		{
-			BUTTON_1_PRESS = true;
-			time_start = false;
-		}
-		if(NTP_START)
-		{
-			NTP_START = false;
-			
-			// Sync message
-			temp.us = app_timer_cnt_get() - base_time;
-			write_data(sys_time, "Sync");
-			temp.year		= sys_time.year;
-			temp.month		= sys_time.month;
-			temp.day		= sys_time.day;
-			temp.hour		= sys_time.hour;
-			temp.minute		= sys_time.minute;
-			temp.second		= sys_time.second;
-
-			FOLLOW_UP = true;	
-		}
-		if(FOLLOW_UP_START)
-		{
-			FOLLOW_UP_START = false;
-			
-			// Follow up message
-			write_data(temp, "");
-//			pwm_start = true;
-		}
-		
-
 	}
 }
 
