@@ -16,8 +16,8 @@
 #include "bsp_btn_ble.h"
 
 #include "nrf_drv_timer.h"
-
 #include "nrf_delay.h"
+#include "nrf_drv_twi.h"
 
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
@@ -58,7 +58,23 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
+#define DS3231
+#ifdef	DS3231
 
+#define DS3231_ADDR		(0x68)
+#define DS3231_SECONDS	(0x00)		// Range 00~59
+#define DS3231_MINUTES	(0x01)		// Range 00~59
+#define DS3231_HOURS	(0x02)		// Range 00~23
+#define DS3231_DAY		(0x03)		// Range 1~7
+#define DS3231_DATE		(0x04)		// Range 1~31
+#define DS3231_MONTH	(0x05)		// Range 1~12
+#define DS3231_YEAR		(0x06)		// Range 00~99(Doesn't include century)
+#define DS3231_CR		(0x0E)		// Control Register (Should be set 0x60, BBSQW and CONV set 1; INTCN need set 0; output frequency is 1 Hz)
+#define DS3231_SR		(0x0F)		// Status Register (Should be set 0x00, because we don't need enable 32kHz clock)
+#define DS3231_TR_UP	(0x11)		// Temperture Register(Upper Byte)
+#define DS3231_TR_LO	(0x12)		// Temperture Register(lowwer Byte)
+
+#endif
 
 
 #define TimeStamp
