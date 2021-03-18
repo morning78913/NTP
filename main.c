@@ -58,23 +58,39 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
+/**********************************************************************
+*                               DS3231                                
+**********************************************************************/
 #define DS3231
 #ifdef	DS3231
 
-#define DS3231_ADDR		(0x68)
-#define DS3231_SECONDS	(0x00)		// Range 00~59
-#define DS3231_MINUTES	(0x01)		// Range 00~59
-#define DS3231_HOURS	(0x02)		// Range 00~23
-#define DS3231_DAY		(0x03)		// Range 1~7
-#define DS3231_DATE		(0x04)		// Range 1~31
-#define DS3231_MONTH	(0x05)		// Range 1~12
-#define DS3231_YEAR		(0x06)		// Range 00~99(Doesn't include century)
-#define DS3231_CR		(0x0E)		// Control Register (Should be set 0x60, BBSQW and CONV set 1; INTCN need set 0; output frequency is 1 Hz)
-#define DS3231_SR		(0x0F)		// Status Register (Should be set 0x00, because we don't need enable 32kHz clock)
-#define DS3231_TR_UP	(0x11)		// Temperture Register(Upper Byte)
-#define DS3231_TR_LO	(0x12)		// Temperture Register(lowwer Byte)
+/* TWI instance ID. */
+#define TWI_INSTANCE_ID     0
+
+/* TWI instance. */
+static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);	
+
+uint8_t DS3231_ADDR			= 0x68;
+uint8_t DS3231_SECONDS[2]	= {0x00, 0x00};		// Range 00~59
+uint8_t DS3231_MINUTES[2]	= {0x01, 0x00};		// Range 00~59
+uint8_t DS3231_HOURS[2]		= {0x02, 0x00};		// Range 00~23
+uint8_t DS3231_DAY[2]		= {0x03, 0x01};		// Range 1~7
+uint8_t DS3231_DATE[2]		= {0x04, 0x00};		// Range 1~31
+uint8_t DS3231_MONTH[2]		= {0x05, 0x00};		// Range 1~12
+uint8_t DS3231_YEAR[2]		= {0x06, 0x00};		// Range 00~99(Doesn't include century)
+uint8_t DS3231_CR[2]		= {0x0E, 0x60};		// Control Register (Should be set 0x60, BBSQW and CONV set 1; INTCN need set 0; output frequency is 1 Hz)
+uint8_t DS3231_SR[2]		= {0x0F, 0x00};		// Status Register (Should be set 0x00, because we don't need enable 32kHz clock)
+uint8_t DS3231_TR_UP[2]		= {0x11, 0x00};		// Temperture Register(Upper Byte)
+uint8_t DS3231_TR_LO[2]		= {0x12, 0x00};		// Temperture Register(lowwer Byte)
 
 #endif
+/*		End #ifdef DS3231		*/
+
+
+
+
+
+
 
 
 #define TimeStamp
@@ -524,6 +540,24 @@ static void uart_init(void)
 /**@snippet [UART Initialization] */
 
 
+void twi_init (void)
+{
+    ret_code_t err_code;
+
+    const nrf_drv_twi_config_t twi_config = {
+       .scl                = ARDUINO_SCL_PIN,
+       .sda                = ARDUINO_SDA_PIN,
+       .frequency          = NRF_TWI_FREQ_100K,
+       .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
+       .clear_bus_init     = false
+    };
+
+    err_code = nrf_drv_twi_init(&m_twi, &twi_config, NULL, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_twi_enable(&m_twi);
+}
+
 /**@brief Function for initializing buttons and leds.
  *
  * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
@@ -629,6 +663,7 @@ int main(void)
 
     // Initialize.
     uart_init();
+	twi_init();
 	adc_init();
 	timer_init();
 	ppi_init(); 
@@ -645,10 +680,30 @@ int main(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
+#define DS3231_CONFIG
+#ifdef DS3231_CONFIG		// Setting register data again, if the battery of DS3231 modual is running out, the inside of register data will be cleaned.
+	uint8_t TWI_BUFFER = 0;
+
+	nrf_drv_twi_tx(&m_twi, DS3231_ADDR, DS3231_CR, 2, true);		// Write Control Register data
+		
+	nrf_drv_twi_tx(&m_twi, DS3231_ADDR, DS3231_CR, 1, true);		// Read Control Register data 
+    nrf_drv_twi_rx(&m_twi, DS3231_ADDR, &TWI_BUFFER, sizeof(TWI_BUFFER));	
+	
+	printf("Control Register is = 0x%x\r\n", TWI_BUFFER);
+	
+	nrf_drv_twi_tx(&m_twi, DS3231_ADDR, DS3231_SR, 2, true);		// Write Status Register data
+		
+	nrf_drv_twi_tx(&m_twi, DS3231_ADDR, DS3231_SR, 1, true);		// Read Status Register data 
+    nrf_drv_twi_rx(&m_twi, DS3231_ADDR, &TWI_BUFFER, sizeof(TWI_BUFFER));
+	printf("Status Register is = 0x%x\r\n", TWI_BUFFER);
+#endif
+
     // Enter main loop.
     for (;;)
     {
         power_manage();
+
+
 	}
 }
 
