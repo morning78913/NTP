@@ -646,7 +646,7 @@ static void buttons_leds_init(bool * p_erase_bonds)
                                  NULL);
     APP_ERROR_CHECK(err_code);
 
-bsp_board_led_on(BSP_BOARD_LED_1);		
+bsp_board_led_off(BSP_BOARD_LED_1);		
 	
     err_code = bsp_btn_ble_init(NULL, &startup_event);
     APP_ERROR_CHECK(err_code);
@@ -954,7 +954,6 @@ void iop_pcrx_nmea( unsigned char data )
             rx_que_head = ++rx_que_head & (unsigned short)(NMEA_RX_QUE_SIZE - 1);
             id_que[id_que_head].dat_siz++;
         }
-
         break;
 
       default:
@@ -1233,7 +1232,6 @@ void iop_pcrx_nmea_dbg_hbd_bytes(unsigned char aData[], int i4NumByte)
               {
                   rx_state = RXS_PRM_HBD2;
               }
-  
               break;
   
           case RXS_PRM_HBD2:
@@ -1374,6 +1372,27 @@ int main(void)
 			{
 				//Get one NMEA Sentence, save in buffer 
 			   iop_get_inst(i2DataIdx, i2PacketSize, &Data[0]);
+				
+				/*******************************
+				*		Catch the UTC time
+				*******************************/
+				if(	Data[0] == '$' && 
+					Data[1] == 'G' &&
+					Data[2] == 'N' &&
+					Data[3]	== 'G' &&
+					Data[4] == 'G' &&
+					Data[5]	== 'A')
+				{
+					bsp_board_led_on(BSP_BOARD_LED_1);	
+					nrf_delay_ms(300);
+					bsp_board_led_off(BSP_BOARD_LED_1);	
+					
+					printf("!!!!!! ");
+					for(int i = 7; i < 13; i++)		printf("%c", Data[i]);		// Print UTC time
+					printf(" !!!!!!\r\n");
+				}	/*		Catch the UTC time end		*/
+				
+				
 			   for (ii=0;ii<i2PacketSize;ii++)
 			   {
 					printf("%c", Data[ii]);
